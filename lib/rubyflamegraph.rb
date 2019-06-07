@@ -5,53 +5,130 @@ require 'ruby-prof-flamegraph'
 require 'benchmark'
 require 'erb'
 
-class FlameGraphPrinterToLines
-  def initialize
-    @lines = []
-  end
-
-  def puts(string)
-    string_segments = string.split(";")
-
-    line_segments = []
-    string_segments.each do |segment|
-      line_segments << segment unless (segment.start_with?("Thread:") || segment.start_with?("Fiber:"))
-    end
-
-    @lines << line_segments
-  end
-
-  def lines
-    @lines
-  end
-end
-
 class RubyFlamegraph
-  def foo(&block)
+  def profile(&block)
     result = ::RubyProf.profile do
       yield
     end
 
-    printer = RubyProf::FlameGraphPrinter.new(result)
-    stack_trace = FlameGraphPrinterToLines.new
+    folded_stack = folded_stack(result)
+    stack_trace_tree = build_stack_trace_tree(folded_stack)
 
-    printer.print(stack_trace, {})
+    @total_time_spent = stack_trace_tree[:TIME_SPENT].to_f
+    @width = 2000
 
-    lines = stack_trace.lines
+    def process_node(node)
+      node_width  = (@width * (node[:TIME_SPENT].to_f / @total_time_spent)).to_i
+      color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"]
+      minimum_node_width = 5
 
-    @chart = {NAME: "Top Level"}
-    lines.each do |line|
-      current_pos = @chart
+      erb = ERB.new <<-ERB
+        <% if node_width > minimum_node_width %>
+          <div class="text-wrapper" style='width:<%= node_width %>;'>
+            <span class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %>
+          </div>
+          <div style='width:<%= node_width %>;' class="node-children">
+            <% node[:CHILDREN].each do |k, child| %>
+              <div class="node-wrapper">
+                <%= process_node(child) %>
+              </div>
+            <% end if node[:CHILDREN] %>
+          </div>
+        <% end %>
+      ERB
+
+      erb.result(binding)
+    end
+
+    erb = ERB.new <<-ERB
+      <html>
+      <head>
+        <style>
+          span {
+            font-family:verdana;
+            font-size:12px;
+          }
+
+          .node-wrapper {
+            display:flex;
+            flex-direction:column-reverse;
+          }
+
+          .node-children {
+            display:flex;
+            flex-direction:row;
+            justify-content:flex-end;
+          }
+
+          .text {
+            text-overflow:ellipsis;
+            padding-left:3px;
+            display:block;
+            width:100%;
+            white-space:nowrap;
+            overflow:hidden;
+            height:15px;
+            border-radius:2px;
+          }
+
+          .text-wrapper {
+            padding-bottom:2px;
+            display:flex;
+            margin-left:0px;
+            margin-top:1px;
+            margin-bottom:1px;
+          }
+        </style>
+      </head>
+      <center><h1>Flame Graph!</h1></center>
+        <div id="flamegraph" class="node-wrapper">
+          <%= process_node(stack_trace_tree) %>
+          </div>
+     </html>
+    ERB
+
+    html = erb.result(binding)
+
+    File.open("test.html", "w") do |f|
+      f.puts html
+    end
+    puts html
+  end
+
+  private
+
+  def folded_stack(profile)
+    string_io = StringIO.new
+    new_printer = RubyProf::FlameGraphPrinter.new(profile).print(string_io)
+    raw_string = string_io.string
+
+    lines = raw_string.lines.map do |s|
+      string_segments = s.strip.split(";")
+
+      line_segments = []
+      string_segments.each do |segment|
+        line_segments << segment unless (segment.start_with?("Thread:") || segment.start_with?("Fiber:"))
+      end
+
+      line_segments
+    end
+  end
+
+  def build_stack_trace_tree(folded_stack_lines)
+    tree = {NAME: "Top Level"}
+    folded_stack_lines.each do |line|
+      current_pos = tree
 
       line_length = line.length
+      next if line_length == 0
+
       match  = line.last.match(/(.+)\s(\d+\.?\d*)\z/)
       next unless match && match.captures[1]
+
       time_spent = match.captures[1].to_f
 
       line.each_with_index do |line_seg, i|
         if i == line.length - 1
-          # End of the line, add an entry in the @chart
-          # First, remove the time spent from name
           name, time_spent = line_seg.match(/(.+)\s(\d+\.?\d*)\z/).captures
 
           current_pos[:CHILDREN] ||= {}
@@ -67,47 +144,8 @@ class RubyFlamegraph
       end
     end
 
-    @chart[:TIME_SPENT] = @chart[:CHILDREN].values[0][:TIME_SPENT]
+    tree[:TIME_SPENT] = tree[:CHILDREN].values[0][:TIME_SPENT]
 
-    @total_time_spent = @chart[:TIME_SPENT].to_f
-    @width = 16000
-
-    def process_node(node)
-      @node = node
-      @node_width  = (@width * (node[:TIME_SPENT].to_f / @total_time_spent)).to_i
-      @color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"]
-
-      erb = ERB.new <<-ERB
-        <div style='padding-bottom:2px;display:flex;width:<%= @node_width %>;margin-left:1px;margin-top:1px;margin-bottom:1px;'>
-          <span style='text-overflow:ellipsis;display:block;width:100%;white-space: nowrap;overflow:hidden;height:15px;border-radius:2px;padding-left:4px;background-color:<%= @color.sample %>;'><%= @node[:NAME] %>
-        </div>
-        <div style='display:flex;flex-direction:row;width:<%= @node_width %>'>
-          <div class="filler" style="flex-grow:1"></div>
-          <% @node[:CHILDREN].each do |k, child| %>
-            <div style='display:flex;flex-direction:column-reverse;'>
-              <%= process_node(child) %>
-            </div>
-          <% end if @node[:CHILDREN] %>
-        </div>
-      ERB
-
-      erb.result(binding)
-    end
-
-    erb = ERB.new <<-ERB
-      <html>
-      <center><h1>Flame Graph!</h1></center>
-        <div id="flamegraph" style='display:flex; flex-direction:column-reverse;font-family:verdana;font-size:12px;'>
-          <%= process_node(@chart) %>
-          </div>
-     </html>
-    ERB
-
-    html = erb.result(binding)
-
-    File.open("test.html", "w") do |f|
-      f.puts html
-    end
-    puts html
+    tree
   end
 end
