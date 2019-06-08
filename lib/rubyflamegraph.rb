@@ -17,29 +17,6 @@ class RubyFlamegraph
     @total_time_spent = stack_trace_tree[:TIME_SPENT].to_f
     @width = 2000
 
-    def process_node(node)
-      node_width  = (@width * (node[:TIME_SPENT].to_f / @total_time_spent)).to_i
-      color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"]
-      minimum_node_width = 5
-
-      erb = ERB.new <<-ERB
-        <% if node_width > minimum_node_width %>
-          <div class="text-wrapper" style='width:<%= node_width %>;'>
-            <span class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %>
-          </div>
-          <div style='width:<%= node_width %>;' class="node-children">
-            <% node[:CHILDREN].each do |k, child| %>
-              <div class="node-wrapper">
-                <%= process_node(child) %>
-              </div>
-            <% end if node[:CHILDREN] %>
-          </div>
-        <% end %>
-      ERB
-
-      erb.result(binding)
-    end
-
     erb = ERB.new <<-ERB
       <html>
       <head>
@@ -89,14 +66,22 @@ class RubyFlamegraph
 
     html = erb.result(binding)
 
-    File.open("test.html", "w") do |f|
-      f.puts html
-    end
     puts html
   end
 
   private
 
+  # Given a rubyprof profile, use RubyProf::FlameGraphPrinter to generate a folded stack file.
+  # Thread and Fiber lines are filtered out.
+  #
+  # E.g. return value
+  #
+  # [
+  #  ["RubyFlameGraph#profile (1) 1.04"],
+  #  ["RubyFlameGraph#profile (1)", "Array.map (1) 4.52"],
+  #  ["RubyFlameGraph#profile (1)", "Array.map (1)", "FixNum#- (500) 25.35"],
+  #  ["RubyFlameGraph#profile (1)", "main.puts (1) 3.09"]
+  # ]
   def folded_stack(profile)
     string_io = StringIO.new
     new_printer = RubyProf::FlameGraphPrinter.new(profile).print(string_io)
@@ -114,8 +99,12 @@ class RubyFlamegraph
     end
   end
 
+  # Given the folded stack, generate the flamegraph stack trace tree.
+  # The time indicated on each line of the folded stack is only the time for that particular method
+  # But in a flamegraph, if foo calls bar, bar's runtime is included in foo.
+  # While building this tree, we add method runtimes to each ancestor method
   def build_stack_trace_tree(folded_stack_lines)
-    tree = {NAME: "Top Level"}
+    tree = {}
     folded_stack_lines.each do |line|
       current_pos = tree
 
@@ -144,8 +133,35 @@ class RubyFlamegraph
       end
     end
 
-    tree[:TIME_SPENT] = tree[:CHILDREN].values[0][:TIME_SPENT]
+    tree[:CHILDREN].values.first
+  end
 
-    tree
+  # Renders a node in the flamegraph. This method is recursive, as nodes have children
+  # which must be rendered.
+  #
+  # We omit nodes that don't reach the minimum node width because every HTML node
+  # has a bit of overhead (padding/margins). We get front end issues trying to render
+  # a node that's smaller than the size of it's padding/margins.
+  def process_node(node)
+    node_width  = (@width * (node[:TIME_SPENT].to_f / @total_time_spent)).to_i
+    color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"]
+    minimum_node_width = 5
+
+    erb = ERB.new <<-ERB
+      <% if node_width > minimum_node_width %>
+        <div class="text-wrapper" style='width:<%= node_width %>;'>
+          <span class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %>
+        </div>
+        <div style='width:<%= node_width %>;' class="node-children">
+          <% node[:CHILDREN].each do |k, child| %>
+            <div class="node-wrapper">
+              <%= process_node(child) %>
+            </div>
+          <% end if node[:CHILDREN] %>
+        </div>
+      <% end %>
+    ERB
+
+    erb.result(binding)
   end
 end
