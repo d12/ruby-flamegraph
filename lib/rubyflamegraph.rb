@@ -17,53 +17,10 @@ class RubyFlamegraph
     @total_time_spent = stack_trace_tree[:TIME_SPENT].to_f
     @width = 2000
 
-    erb = ERB.new <<-ERB
-      <html>
-      <head>
-        <style>
-          span {
-            font-family:verdana;
-            font-size:12px;
-          }
+    @flamegraph_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "flamegraph.html.erb"))
+    @node_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "node.html.erb"))
 
-          .node-wrapper {
-            display:flex;
-            flex-direction:column-reverse;
-          }
-
-          .node-children {
-            display:flex;
-            flex-direction:row;
-            justify-content:flex-end;
-          }
-
-          .text {
-            text-overflow:ellipsis;
-            padding-left:3px;
-            display:block;
-            width:100%;
-            white-space:nowrap;
-            overflow:hidden;
-            height:15px;
-            border-radius:2px;
-          }
-
-          .text-wrapper {
-            padding-bottom:2px;
-            display:flex;
-            margin-left:0px;
-            margin-top:1px;
-            margin-bottom:1px;
-          }
-        </style>
-      </head>
-      <center><h1>Flame Graph!</h1></center>
-        <div id="flamegraph" class="node-wrapper">
-          <%= process_node(stack_trace_tree) %>
-          </div>
-     </html>
-    ERB
-
+    erb = ERB.new(@flamegraph_erb)
     html = erb.result(binding)
 
     puts html
@@ -134,34 +91,5 @@ class RubyFlamegraph
     end
 
     tree[:CHILDREN].values.first
-  end
-
-  # Renders a node in the flamegraph. This method is recursive, as nodes have children
-  # which must be rendered.
-  #
-  # We omit nodes that don't reach the minimum node width because every HTML node
-  # has a bit of overhead (padding/margins). We get front end issues trying to render
-  # a node that's smaller than the size of it's padding/margins.
-  def process_node(node)
-    node_width  = (@width * (node[:TIME_SPENT].to_f / @total_time_spent)).to_i
-    color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"]
-    minimum_node_width = 5
-
-    erb = ERB.new <<-ERB
-      <% if node_width > minimum_node_width %>
-        <div class="text-wrapper" style='width:<%= node_width %>;'>
-          <span class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %>
-        </div>
-        <div style='width:<%= node_width %>;' class="node-children">
-          <% node[:CHILDREN].each do |k, child| %>
-            <div class="node-wrapper">
-              <%= process_node(child) %>
-            </div>
-          <% end if node[:CHILDREN] %>
-        </div>
-      <% end %>
-    ERB
-
-    erb.result(binding)
   end
 end
