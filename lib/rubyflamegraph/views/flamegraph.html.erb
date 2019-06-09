@@ -1,45 +1,83 @@
 <html>
-<head>
-  <style>
-    span {
-      font-family:verdana;
-      font-size:12px;
-    }
+  <head>
+    <style>
+      span {
+        font-family:verdana;
+        font-size:12px;
+      }
 
-    .node-wrapper {
-      display:flex;
-      flex-direction:column-reverse;
-    }
+      .node-wrapper {
+        display:flex;
+        flex-direction:column-reverse;
+        overflow:scroll;
+      }
 
-    .node-children {
-      display:flex;
-      flex-direction:row;
-      justify-content:flex-end;
-    }
+      .node-children {
+        display:flex;
+        flex-direction:row;
+        justify-content:flex-end;
+      }
 
-    .text {
-      text-overflow:ellipsis;
-      padding-left:3px;
-      display:block;
-      width:100%;
-      white-space:nowrap;
-      overflow:hidden;
-      height:15px;
-      border-radius:2px;
-    }
+      .text {
+        text-overflow:ellipsis;
+        padding-left:3px;
+        display:block;
+        width:100%;
+        white-space:nowrap;
+        overflow:hidden;
+        height:15px;
+        border-radius:2px;
+      }
 
-    .text-wrapper {
-      padding-bottom:2px;
-      display:flex;
-      margin-left:0px;
-      margin-top:1px;
-      margin-bottom:1px;
-    }
-  </style>
-</head>
-<center><h1>Flame Graph!</h1></center>
-  <div id="flamegraph" class="node-wrapper">
-    <% node = stack_trace_tree %>
-    <%= ERB.new(@node_erb).result_with_hash(node: node, width: @width, total_time_spent: @total_time_spent, node_erb_string: @node_erb) %>
+      .text-wrapper {
+        padding-bottom:2px;
+        display:flex;
+        margin-left:0px;
+        margin-top:1px;
+        margin-bottom:1px;
+      }
+
+      body {
+        margin:0;
+      }
+
+      #info-box {
+        padding-left:3px;
+        padding-bottom:2px;
+        padding-top:2px;
+      }
+
+      .flamegraph-wrapper {
+        display:flex;
+        flex-direction:column-reverse;
+      }
+    </style>
+
+    <script>
+      var hoverFunction = function() {
+          var text = this.getAttribute("data-hover-text");
+          textBox = document.getElementById("info-box");
+
+          textBox.innerHTML = text;
+      };
+
+      window.onload = function(){
+        var textElements = document.getElementsByClassName("text");
+
+        for (var i = 0; i < textElements.length; i++) {
+          textElements[i].addEventListener('mouseover', hoverFunction, false);
+        }
+      }
+    </script>
+  </head>
+
+  <div class="flamegraph-wrapper" style="">
+    <div id="info-box">
+    </div>
+    <div id="flamegraph" class="node-wrapper">
+      <% node = stack_trace_tree %>
+      <%= ERB.new(@node_erb).result_with_hash(node: node, width: @width, total_time_spent: @total_time_spent, node_erb_string: @node_erb) %>
+    </div>
+    <center><h1>Flame Graph</h1></center>
   </div>
 </html>

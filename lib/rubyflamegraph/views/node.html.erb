@@ -1,10 +1,11 @@
-<% node_width  = (width * (node[:TIME_SPENT].to_f / total_time_spent)).to_i %>
-<% color = ["#9b2948", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"] %>
+<% node_time_ratio = (node[:TIME_SPENT].to_f / total_time_spent) %>
+<% node_width  = (width * node_time_ratio).to_i %>
+<% color = ["#f1261b", "#ff7251", "#ffca7b", "#ffcd74", "#ffedbf"] %>
 <% minimum_node_width = 5 %>
 
 <% if node_width > minimum_node_width %>
   <div class="text-wrapper" style='width:<%= node_width %>;'>
-    <span class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %></span>
+    <span data-hover-text="<%= node[:NAME] %> <%= (node_time_ratio*100).to_f.round(2) %>%" class="text" style='background-color:<%= color.sample %>;'><%= node[:NAME] %></span>
   </div>
   <div style='width:<%= node_width %>;' class="node-children">
     <% node[:CHILDREN].each do |k, child| %>
