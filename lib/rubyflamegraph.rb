@@ -6,7 +6,7 @@ require 'benchmark'
 require 'erb'
 
 class RubyFlamegraph
-  def profile(&block)
+  def profile(width: 2000, &block)
     result = ::RubyProf.profile do
       yield
     end
@@ -14,14 +14,13 @@ class RubyFlamegraph
     folded_stack = folded_stack(result)
     stack_trace_tree = build_stack_trace_tree(folded_stack)
 
-    @total_time_spent = stack_trace_tree[:TIME_SPENT].to_f
-    @width = 2000
+    total_time_spent = stack_trace_tree[:TIME_SPENT].to_f
 
-    @flamegraph_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "flamegraph.html.erb"))
-    @node_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "node.html.erb"))
+    flamegraph_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "flamegraph.html.erb"))
+    node_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "node.html.erb"))
 
-    erb = ERB.new(@flamegraph_erb)
-    html = erb.result(binding)
+    erb = ERB.new(flamegraph_erb)
+    html = erb.result_with_hash(width: width, node_erb: node_erb, total_time_spent: total_time_spent, stack_trace_tree: stack_trace_tree)
 
     puts html
   end
