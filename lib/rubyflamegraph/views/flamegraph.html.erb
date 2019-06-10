@@ -50,6 +50,7 @@
       .flamegraph-wrapper {
         display:flex;
         flex-direction:column-reverse;
+        height:100%;
       }
     </style>
 
@@ -73,11 +74,11 @@
 
   <div class="flamegraph-wrapper" style="">
     <div id="info-box">
+      Hover over a node for more information
     </div>
     <div id="flamegraph" class="node-wrapper">
       <% node = stack_trace_tree %>
       <%= ERB.new(node_erb).result_with_hash(node: node, width: width, total_time_spent: total_time_spent, node_erb_string: node_erb) %>
     </div>
-    <center><h1>Flame Graph</h1></center>
   </div>
 </html>
