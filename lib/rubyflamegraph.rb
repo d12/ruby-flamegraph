@@ -6,7 +6,7 @@ require 'benchmark'
 require 'erb'
 
 class RubyFlamegraph
-  def profile(width: 2000, &block)
+  def self.profile(width: 2000, &block)
     result = ::RubyProf.profile do
       yield
     end
@@ -38,7 +38,7 @@ class RubyFlamegraph
   #  ["RubyFlameGraph#profile (1)", "Array.map (1)", "FixNum#- (500) 25.35"],
   #  ["RubyFlameGraph#profile (1)", "main.puts (1) 3.09"]
   # ]
-  def folded_stack(profile)
+  def self.folded_stack(profile)
     string_io = StringIO.new
     new_printer = RubyProf::FlameGraphPrinter.new(profile).print(string_io)
     raw_string = string_io.string
@@ -59,7 +59,7 @@ class RubyFlamegraph
   # The time indicated on each line of the folded stack is only the time for that particular method
   # But in a flamegraph, if foo calls bar, bar's runtime is included in foo.
   # While building this tree, we add method runtimes to each ancestor method
-  def build_stack_trace_tree(folded_stack_lines)
+  def self.build_stack_trace_tree(folded_stack_lines)
     tree = {}
     folded_stack_lines.each do |line|
       current_pos = tree
