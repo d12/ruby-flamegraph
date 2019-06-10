@@ -13,6 +13,8 @@ RubyFlamegraph.profile(width: 1600) {
 }
 ```
 
+Screenshot of rendered HTML (HTML includes interactivity)
+
 ![](https://i.imgur.com/oGAjc1v.png)
 
 ## Interactivity
