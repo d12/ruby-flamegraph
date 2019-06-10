@@ -2,7 +2,7 @@
 
 A Ruby gem for generating stacktrace profile flamegraphs. Profiling is done via RubyProf, and folded stack file generation is done by https://github.com/oozou/ruby-prof-flamegraph. Most of the logic in this gem is rendering folded stack files as flamegraphs.
 
-Inspiration is from Brendan Gregg's https://github.com/brendangregg/FlameGraph written in Perl. I created this gem to be able to generate flamegraphs without shelling out to Perl.
+Inspiration is from Brendan Gregg's https://github.com/brendangregg/FlameGraph written in Perl. I created this gem to be able to generate Ruby flamegraphs without shelling out to Perl.
 
 ## Example
 
