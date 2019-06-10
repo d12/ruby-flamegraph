@@ -20,9 +20,7 @@ class RubyFlamegraph
     node_erb = File.read(File.join(File.dirname(__FILE__), "rubyflamegraph", "views", "node.html.erb"))
 
     erb = ERB.new(flamegraph_erb)
-    html = erb.result_with_hash(width: width, node_erb: node_erb, total_time_spent: total_time_spent, stack_trace_tree: stack_trace_tree)
-
-    puts html
+    erb.result_with_hash(width: width, node_erb: node_erb, total_time_spent: total_time_spent, stack_trace_tree: stack_trace_tree)
   end
 
   private
