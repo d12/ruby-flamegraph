@@ -5,9 +5,9 @@ A Ruby gem for generating stacktrace profile flamegraphs. Profiling is done via 
 ## Example
 
 ```ruby
-puts(RubyFlamegraph.profile(width: 1600) {
+RubyFlamegraph.profile(width: 1600) {
   User.where(id: (1..5000).to_a).to_a
-})
+}
 ```
 
 ![](https://i.imgur.com/oGAjc1v.png)
